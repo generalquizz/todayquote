@@ -1,64 +1,70 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Today Quote – Secure Chat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Private Chat</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Tahoma,Arial;background:#f4f4f4;color:#333}
-header{background:#222;color:#fff;padding:22px 10px;text-align:center}
-#quote{font-size:18px;line-height:1.6}
-#secretBtn{position:fixed;bottom:12px;left:12px;width:40px;height:40px;background:#f4f4f4;border:none;cursor:pointer;z-index:1000}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);justify-content:center;align-items:center;z-index:2000}
-.box{background:#fff;width:92%;max-width:360px;padding:20px;border-radius:12px;text-align:center}
+body{margin:0;font-family:Tahoma,Arial;background:#f4f4f4}
+header{background:#222;color:#fff;padding:22px;text-align:center}
+#secretBtn{position:fixed;bottom:12px;left:12px;width:40px;height:40px;
+background:#f4f4f4;border:none;cursor:pointer;z-index:1000}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);
+justify-content:center;align-items:center;z-index:2000}
+.box{background:#fff;width:90%;max-width:360px;padding:20px;
+border-radius:12px;text-align:center}
 input,button{width:100%;padding:12px;font-size:16px;margin-top:10px}
 button{background:#222;color:#fff;border:none;border-radius:8px}
-#chatBox{width:100%;max-width:420px;height:100%;max-height:600px;background:#fff;display:flex;flex-direction:column;border-radius:14px;overflow:hidden}
-#chatHeader{background:#222;color:#fff;padding:12px;text-align:center}
+#chatBox{width:100%;max-width:420px;height:100%;max-height:600px;
+background:#fff;display:flex;flex-direction:column;border-radius:14px}
 #messages{flex:1;padding:12px;overflow-y:auto}
-.msg{margin:8px 0;padding:10px 14px;border-radius:18px;max-width:80%;font-size:14px;word-wrap:break-word}
+.msg{margin:8px 0;padding:10px 14px;border-radius:18px;max-width:80%}
 .me{background:#d1f1ff;margin-left:auto}
 .other{background:#eee;margin-right:auto}
 #inputArea{display:flex;border-top:1px solid #ccc}
 #inputArea input{flex:1;border:none}
-#inputArea button{width:auto;padding:0 18px;border-radius:0}
-.note{font-size:12px;color:#666;margin-top:8px}
+#inputArea button{width:auto;padding:0 18px}
 </style>
+
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 </head>
+
 <body>
-<header><div id="quote">حكمة اليوم: الخصوصية تبدأ بالتحكم</div></header>
-<button id="secretBtn" aria-label="open"></button>
+
+<header>حكمة اليوم: الخصوصية تبدأ بالتحكم</header>
+<button id="secretBtn"></button>
 
 <div id="passOverlay" class="overlay">
   <div class="box">
     <div>أدخل كلمة المرور</div>
-    <input id="passInput" type="password" placeholder="••••••" />
+    <input id="passInput" type="password">
     <button id="passBtn">دخول</button>
-    <div class="note">جلسة مشفرة طرف‑لطرف • رسائل ذاتية التدمير</div>
   </div>
 </div>
 
 <div id="blockOverlay" class="overlay">
-  <div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div>
+  <div class="box">⚠️ الشات مستخدم بين طرفين فقط</div>
 </div>
 
 <div id="chatOverlay" class="overlay">
   <div id="chatBox">
-    <div id="chatHeader">Private E2EE Chat</div>
+    <div style="background:#222;color:#fff;padding:10px;text-align:center">
+      Secure Chat
+    </div>
     <div id="messages"></div>
     <div id="inputArea">
-      <input id="msgInput" placeholder="اكتب رسالة..." />
+      <input id="msgInput" placeholder="اكتب رسالة...">
       <button id="sendBtn">إرسال</button>
     </div>
   </div>
 </div>
 
 <script>
-// ================== Firebase ==================
+/* ================= Firebase ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
   authDomain: "todayquote-3a22b.firebaseapp.com",
@@ -69,141 +75,136 @@ const firebaseConfig = {
   appId: "1:10962691980:web:a38f4e91310cccba0998a9"
 };
 firebase.initializeApp(firebaseConfig);
+firebase.auth().signInAnonymously();
 const db = firebase.database();
-firebase.auth().signInAnonymously().catch(console.error);
 
-// ================== UID (device‑bound) ==================
-let uid = localStorage.getItem('uid');
-if(!uid){ uid = Math.random().toString(36).slice(2); localStorage.setItem('uid',uid); }
+/* ================= UID ================= */
+let uid = localStorage.getItem("uid");
+if(!uid){
+  uid = Math.random().toString(36).slice(2);
+  localStorage.setItem("uid", uid);
+}
 
-// ================== Refs ==================
-const lockRef = db.ref('lock');      // presence / max two
-const chatRef = db.ref('chat');      // encrypted messages
-const keyRef  = db.ref('sessionKey'); // encrypted shared key (ephemeral)
+/* ================= Refs ================= */
+const lockRef = db.ref("lock");
+const chatRef = db.ref("chat");
+const keyRef  = db.ref("sessionKey");
 
-// ================== DOM ==================
-const secretBtn = document.getElementById('secretBtn');
-const passOverlay = document.getElementById('passOverlay');
-const chatOverlay = document.getElementById('chatOverlay');
-const blockOverlay = document.getElementById('blockOverlay');
-const passBtn = document.getElementById('passBtn');
-const passInput = document.getElementById('passInput');
-const sendBtn = document.getElementById('sendBtn');
-const msgInput = document.getElementById('msgInput');
-const messages = document.getElementById('messages');
+/* ================= DOM ================= */
+const secretBtn = document.getElementById("secretBtn");
+const passOverlay = document.getElementById("passOverlay");
+const chatOverlay = document.getElementById("chatOverlay");
+const blockOverlay = document.getElementById("blockOverlay");
+const passBtn = document.getElementById("passBtn");
+const passInput = document.getElementById("passInput");
+const sendBtn = document.getElementById("sendBtn");
+const msgInput = document.getElementById("msgInput");
+const messages = document.getElementById("messages");
 
-secretBtn.onclick = ()=> passOverlay.style.display='flex';
+secretBtn.onclick = () => passOverlay.style.display = "flex";
 passBtn.onclick = enterChat;
-passInput.onkeyup = (e)=>{ if(e.key==='Enter') enterChat(); };
+passInput.onkeyup = e => { if(e.key==="Enter") enterChat(); };
 
-// ================== Crypto (AES‑GCM) ==================
-let sessionKey = null; // CryptoKey (never stored)
+/* ================= Crypto ================= */
+let sessionKey = null;
 
 async function genKey(){
-  return crypto.subtle.generateKey({name:'AES-GCM',length:256}, true, ['encrypt','decrypt']);
+  return crypto.subtle.generateKey(
+    {name:"AES-GCM",length:256}, true, ["encrypt","decrypt"]
+  );
 }
-async function exportKeyRaw(key){ return crypto.subtle.exportKey('raw', key); }
-async function importKeyRaw(raw){ return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt','decrypt']); }
-
-function b64(ab){ return btoa(String.fromCharCode(...new Uint8Array(ab))); }
-function ub64(s){ return Uint8Array.from(atob(s), c=>c.charCodeAt(0)).buffer; }
-
-async function encryptText(text){
+function b64(b){return btoa(String.fromCharCode(...new Uint8Array(b)))}
+function ub64(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+async function encrypt(txt){
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const enc = new TextEncoder().encode(text);
-  const ct = await crypto.subtle.encrypt({name:'AES-GCM',iv}, sessionKey, enc);
-  return { iv: b64(iv), ct: b64(ct) };
+  const ct = await crypto.subtle.encrypt(
+    {name:"AES-GCM",iv}, sessionKey, new TextEncoder().encode(txt)
+  );
+  return {iv:b64(iv), ct:b64(ct)};
 }
-async function decryptText(payload){
-  const iv = ub64(payload.iv);
-  const ct = ub64(payload.ct);
-  const pt = await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(iv)}, sessionKey, ct);
+async function decrypt(p){
+  const pt = await crypto.subtle.decrypt(
+    {name:"AES-GCM",iv:ub64(p.iv)}, sessionKey, ub64(p.ct)
+  );
   return new TextDecoder().decode(pt);
 }
 
-// ================== Enter Chat (atomic lock) ==================
+/* ================= دخول الشات (الإصلاح الحقيقي) ================= */
 async function enterChat(){
-  if(passInput.value !== 'blobif') return;
+  if(passInput.value !== "blobif") return;
 
-  lockRef.transaction(current=>{
-    current = current || {};
-    if(current[uid]) return current;            // نفس الجهاز مسموح
-    if(Object.keys(current).length >= 2) return; // منع طرف ثالث
-    current[uid] = true; return current;
-  }, async (err, committed)=>{
-    if(err || !committed){
-      passOverlay.style.display='none';
-      blockOverlay.style.display='flex';
+  try{
+    const result = await lockRef.transaction(cur=>{
+      cur = cur || {};
+      if(cur[uid]) return cur;
+      if(Object.keys(cur).length >= 2) return;
+      cur[uid] = true;
+      return cur;
+    });
+
+    if(!result.committed){
+      passOverlay.style.display="none";
+      blockOverlay.style.display="flex";
       return;
     }
 
-    // تسجيل الخروج التلقائي
     lockRef.child(uid).onDisconnect().remove();
 
-    // تأسيس مفتاح التشفير قبل إظهار الشات
-    try{
-      await establishKey();
-      passOverlay.style.display='none';
-      chatOverlay.style.display='flex';
-    }catch(e){
-      // في حال فشل المفتاح لا نفتح الشات
-      lockRef.child(uid).remove();
-      passOverlay.style.display='flex';
+    const snap = await keyRef.once("value");
+    if(!snap.exists()){
+      sessionKey = await genKey();
+      const raw = await crypto.subtle.exportKey("raw", sessionKey);
+      await keyRef.set(b64(raw));
+      keyRef.onDisconnect().remove();
+    }else{
+      sessionKey = await crypto.subtle.importKey(
+        "raw", ub64(snap.val()), "AES-GCM", false, ["encrypt","decrypt"]
+      );
     }
-  });
-}
 
-// ================== Key Establishment (Zero‑Knowledge) ==================
-async function establishKey(){
-  // First entrant generates key and publishes encrypted blob; second imports
-  const snap = await keyRef.once('value');
-  if(!snap.exists()){
-    sessionKey = await genKey();
-    const raw = await exportKeyRaw(sessionKey);
-    // Store only base64 raw (ephemeral). No one can read messages without key in memory.
-    await keyRef.set(b64(raw));
-    keyRef.onDisconnect().remove();
-  } else {
-    const rawB64 = snap.val();
-    sessionKey = await importKeyRaw(ub64(rawB64));
+    passOverlay.style.display="none";
+    chatOverlay.style.display="flex";
+
+  }catch(e){
+    console.error(e);
+    lockRef.child(uid).remove();
+    passOverlay.style.display="flex";
   }
 }
 
-// ================== Messaging ==================
+/* ================= رسائل ================= */
+sendBtn.onclick = sendMsg;
+msgInput.onkeyup = e => { if(e.key==="Enter") sendMsg(); };
+
 async function sendMsg(){
-  if(!msgInput.value.trim() || !sessionKey) return;
-  const payload = await encryptText(msgInput.value);
+  if(!msgInput.value.trim()) return;
+  const payload = await encrypt(msgInput.value);
   const r = chatRef.push();
-  await r.set({ payload, uid, t: Date.now() });
-  setTimeout(()=> r.remove(), 5000); // self‑destruct
-  msgInput.value='';
+  await r.set({payload,uid});
+  setTimeout(()=>r.remove(),5000);
+  msgInput.value="";
 }
 
-sendBtn.onclick = sendMsg;
-msgInput.onkeyup = (e)=>{ if(e.key==='Enter') sendMsg(); };
-
-chatRef.on('child_added', async snap=>{
-  const d = snap.val(); if(!d || !sessionKey) return;
-  try{
-    const text = await decryptText(d.payload);
-    const m = document.createElement('div');
-    m.className = 'msg ' + (d.uid===uid?'me':'other');
-    m.textContent = text;
-    messages.appendChild(m);
-    messages.scrollTop = messages.scrollHeight;
-    setTimeout(()=> m.remove(), 5000);
-  }catch(e){ /* ignore */ }
+chatRef.on("child_added", async s=>{
+  const d=s.val(); if(!d) return;
+  const m=document.createElement("div");
+  m.className="msg "+(d.uid===uid?"me":"other");
+  m.textContent=await decrypt(d.payload);
+  messages.appendChild(m);
+  messages.scrollTop=messages.scrollHeight;
+  setTimeout(()=>m.remove(),5000);
 });
 
-// ================== Cleanup: when both leave ==================
-function cleanupIfEmpty(){
-  lockRef.once('value').then(s=>{
-    const users = s.val() || {};
-    if(Object.keys(users).length===0){ chatRef.remove(); keyRef.remove(); }
+/* ================= تنظيف ================= */
+lockRef.on("child_removed",()=>{
+  lockRef.once("value").then(s=>{
+    if(!s.exists()){
+      chatRef.remove();
+      keyRef.remove();
+    }
   });
-}
-lockRef.on('child_removed', cleanupIfEmpty);
-
+});
 </script>
+
 </body>
 </html>
