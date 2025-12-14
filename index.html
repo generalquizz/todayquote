@@ -1,81 +1,40 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>مدونة خاصة</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Today Quote & Secure Chat</title>
 <style>
-body{margin:0;font-family:Tahoma;background:#f4f4f4;color:#222;height:100vh;overflow:hidden}
-/* ===== الواجهة الرئيسية (مدونة) ===== */
-#blog{display:flex;flex-direction:column;height:100vh}
-header{background:#fff;padding:20px;text-align:center;border-bottom:1px solid #ddd}
-header h1{margin:0;font-size:22px}
-header p{margin:8px 0 0;color:#555}
-main{flex:1;padding:20px;overflow-y:auto}
-article{background:#fff;padding:15px;border-radius:8px;box-shadow:0 0 5px rgba(0,0,0,.1)}
-/* زر مخفي */
-#secretBtn{position:fixed;bottom:5px;left:5px;width:30px;height:30px;background:#f4f4f4;border:none;cursor:pointer}
-/* ===== واجهة الشات ===== */
-#chatScreen{display:none;position:fixed;inset:0;background:#0f172a;color:#fff;z-index:10}
-.chatBox{max-width:420px;margin:20px auto;background:#020617;border-radius:12px;display:flex;flex-direction:column;height:90vh}
-.chatBox header{background:#020617;color:#22c55e;border:none}
-#messages{flex:1;overflow-y:auto;padding:10px}
-.msg{margin:6px 0;padding:8px 12px;border-radius:10px;max-width:80%}
-.me{background:#2563eb;margin-left:auto}
-.other{background:#334155}
-footer{display:flex;padding:10px;gap:6px}
-input{flex:1;padding:10px;border-radius:8px;border:none}
-button{padding:10px 14px;border:none;border-radius:8px;background:#22c55e;font-weight:bold;cursor:pointer}
-#closeChat{background:#ef4444;color:#fff}
-/* شاشة كلمة المرور */
-#lock{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;background:#020617}
-.lockBox{background:#020617;padding:20px;border-radius:10px;text-align:center}
-.lockBox input{margin-top:10px;width:100%}
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f5f5f5; }
+.header { background:#222; color:#fff; padding:20px; text-align:center; font-size:24px; }
+.hidden-button { position:fixed; bottom:10px; left:10px; color:#f5f5f5; border:none; background:#f5f5f5; cursor:pointer; }
+.chat-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; }
+.chat-box { background:#fff; width:400px; height:500px; display:flex; flex-direction:column; border-radius:10px; overflow:hidden; }
+.chat-messages { flex:1; padding:10px; overflow-y:auto; }
+.msg { padding:5px 10px; margin:5px 0; border-radius:5px; max-width:80%; }
+.me { background:#a0e7e5; margin-left:auto; }
+.other { background:#ffaeae; margin-right:auto; }
+.chat-input { display:flex; }
+.chat-input input { flex:1; padding:10px; border:none; border-top:1px solid #ccc; }
+.chat-input button { padding:10px; border:none; background:#222; color:#fff; cursor:pointer; }
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
-
-<!-- ===== المدونة ===== -->
-<div id="blog">
-  <header>
-    <h1>مدونة خاصة</h1>
-    <p>حكمة اليوم: "الصمت أحيانًا أبلغ من الكلام"</p>
-  </header>
-  <main>
-    <article>
-      <h3>مقال اليوم</h3>
-      <p>هذه مجرد واجهة تبدو كمدونة عادية ولا تحتوي على أي دلالة لوجود شات.</p>
-    </article>
-  </main>
-</div>
-<button id="secretBtn"></button>
-
-<!-- ===== الشات ===== -->
-<div id="chatScreen">
-  <div id="lock">
-    <div class="lockBox">
-      <h3>كلمة المرور</h3>
-      <input id="pass" type="password" placeholder="ادخل كلمة المرور">
-      <button onclick="unlock()">دخول</button>
+<div class="header">حكمة اليوم: لا تؤجل عمل اليوم إلى الغد</div>
+<button class="hidden-button" id="openChat">.</button>
+<div class="chat-overlay" id="chatOverlay">
+  <div class="chat-box">
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input">
+      <input type="text" id="chatText" placeholder="اكتب رسالتك...">
+      <button id="sendBtn">Send</button>
     </div>
   </div>
-
-  <div class="chatBox">
-    <header>🔒 شات مشفر ذاتي التدمير</header>
-    <div id="messages"></div>
-    <footer>
-      <input id="text" placeholder="اكتب رسالة…">
-      <button onclick="send()">إرسال</button>
-      <button id="closeChat" onclick="closeChat()">إغلاق</button>
-    </footer>
-  </div>
 </div>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-/* ===== Firebase Config ===== */
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
   authDomain: "todayquote-3a22b.firebaseapp.com",
@@ -87,61 +46,71 @@ const firebaseConfig = {
   measurementId: "G-WB9434WPCX"
 };
 firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+const db = firebase.database();
+const chatRef = db.ref('chat');
 
-/* ===== فتح الشات ===== */
-secretBtn.onclick=()=>chatScreen.style.display='block';
-function closeChat(){chatScreen.style.display='none';pass.value='';lock.style.display='flex'}
+// User ID for distinguishing messages
+let userId = localStorage.getItem('uid');
+if(!userId){ userId = crypto.randomUUID(); localStorage.setItem('uid', userId); }
 
-function unlock(){
- if(pass.value==='blobif') lock.style.display='none';
- else alert('كلمة المرور غير صحيحة');
-}
-
-/* ===== User ID ===== */
-const userId=localStorage.uid||(()=>{const x='u'+Math.random().toString(36).slice(2);localStorage.uid=x;return x})();
-
-/* ===== تشفير AES ===== */
+// Encryption utilities (simple AES-GCM)
 async function getKey(){
- if(localStorage.chatKey){
-  const raw=Uint8Array.from(atob(localStorage.chatKey),c=>c.charCodeAt(0));
-  return crypto.subtle.importKey('raw',raw,'AES-GCM',true,['encrypt','decrypt']);
- }
- const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
- const raw=await crypto.subtle.exportKey('raw',key);
- localStorage.chatKey=btoa(String.fromCharCode(...new Uint8Array(raw)));
- return key;
+  let raw = new TextEncoder().encode(userId);
+  return crypto.subtle.importKey('raw', raw, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
 }
-async function encrypt(txt,key){
- const iv=crypto.getRandomValues(new Uint8Array(12));
- const enc=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(txt));
- return{m:btoa(String.fromCharCode(...new Uint8Array(enc))),iv:btoa(String.fromCharCode(...iv))};
+async function encrypt(msg,key){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder().encode(msg);
+  const m = await crypto.subtle.encrypt({name:'AES-GCM',iv}, key, enc);
+  return {m:btoa(String.fromCharCode(...new Uint8Array(m))), iv:btoa(String.fromCharCode(...iv))};
 }
 async function decrypt(m,iv,key){
- const d=Uint8Array.from(atob(m),c=>c.charCodeAt(0));
- const i=Uint8Array.from(atob(iv),c=>c.charCodeAt(0));
- const dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:i},key,d);
- return new TextDecoder().decode(dec);
+  const decrypted = await crypto.subtle.decrypt({
+    name:'AES-GCM',
+    iv: new Uint8Array(atob(iv).split('').map(c=>c.charCodeAt(0)))
+  }, key, new Uint8Array(atob(m).split('').map(c=>c.charCodeAt(0))));
+  return new TextDecoder().decode(decrypted);
 }
 
-/* ===== إرسال ===== */
+// Chat Elements
+const overlay = document.getElementById('chatOverlay');
+const openBtn = document.getElementById('openChat');
+const sendBtn = document.getElementById('sendBtn');
+const text = document.getElementById('chatText');
+const box = document.getElementById('chatMessages');
+
+// Open Chat with password prompt
+openBtn.addEventListener('click',()=>{
+  const pwd = prompt('ادخل كلمة المرور');
+  if(pwd==='blobif') overlay.style.display='flex';
+});
+
+// Send message
+sendBtn.addEventListener('click', send);
+text.addEventListener('keypress', e=>{if(e.key==='Enter') send();});
 async function send(){
- const t=text.value.trim(); if(!t)return; text.value='';
- const key=await getKey(); const e=await encrypt(t,key);
- const r=db.ref('chat').push();
- r.set({u:userId,m:e.m,iv:e.iv,ts:Date.now()});
- setTimeout(()=>r.remove(),5000); // تدمير ذاتي 5 ثواني
+  const t = text.value.trim();
+  if(!t) return;
+  text.value='';
+  const key = await getKey();
+  const e = await encrypt(t,key);
+  const msgRef = chatRef.push();
+  await msgRef.set({ u:userId, m:e.m, iv:e.iv, ts:firebase.database.ServerValue.TIMESTAMP });
 }
 
-/* ===== استقبال ===== */
-const box=document.getElementById('messages');
-db.ref('chat').on('child_added',async s=>{
- const d=s.val(); const key=await getKey();
- const txt=await decrypt(d.m,d.iv,key);
- const div=document.createElement('div');
- div.className='msg '+(d.u===userId?'me':'other');
- div.textContent=txt; box.appendChild(div);
- box.scrollTop=box.scrollHeight;
+// Listen for new messages
+chatRef.on('child_added', async snap=>{
+  const d = snap.val();
+  if(!d) return;
+  const key = await getKey();
+  const txt = await decrypt(d.m,d.iv,key);
+  const div = document.createElement('div');
+  div.className = 'msg ' + (d.u===userId?'me':'other');
+  div.textContent = txt;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  // Remove message from UI after 5 seconds
+  setTimeout(()=>{ div.remove(); },5000);
 });
 </script>
 </body>
