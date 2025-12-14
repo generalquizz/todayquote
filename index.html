@@ -11,7 +11,6 @@ body{margin:0;font-family:Tahoma, Arial;background:#f4f4f4;color:#333}
 header{background:#222;color:#fff;padding:25px 10px;text-align:center}
 #quote{font-size:18px;line-height:1.6}
 
-/* زر مخفي */
 #secretBtn{
   position:fixed;
   bottom:12px;
@@ -24,8 +23,7 @@ header{background:#222;color:#fff;padding:25px 10px;text-align:center}
   z-index:1000;
 }
 
-/* نافذة كلمة السر */
-#passwordOverlay{
+#passwordOverlay,#blockOverlay,#chatOverlay{
   display:none;
   position:fixed;
   inset:0;
@@ -34,27 +32,19 @@ header{background:#222;color:#fff;padding:25px 10px;text-align:center}
   align-items:center;
   z-index:2000;
 }
-#passwordBox{
+
+.box{
   background:#fff;
   width:90%;
-  max-width:320px;
+  max-width:340px;
   padding:20px;
   border-radius:10px;
   text-align:center;
 }
-#passwordBox input{width:100%;padding:12px;font-size:16px;margin-top:10px}
-#passwordBox button{margin-top:15px;padding:10px 20px;background:#222;color:#fff;border:none;font-size:16px}
 
-/* نافذة الشات */
-#chatOverlay{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.85);
-  justify-content:center;
-  align-items:center;
-  z-index:3000;
-}
+input,button{width:100%;padding:12px;font-size:16px;margin-top:10px}
+button{background:#222;color:#fff;border:none}
+
 #chatBox{
   width:100%;
   max-width:420px;
@@ -64,23 +54,14 @@ header{background:#222;color:#fff;padding:25px 10px;text-align:center}
   display:flex;
   flex-direction:column;
 }
-#chatHeader{
-  background:#222;
-  color:#fff;
-  padding:12px;
-  text-align:center;
-}
-#messages{
-  flex:1;
-  padding:12px;
-  overflow-y:auto;
-}
+#chatHeader{background:#222;color:#fff;padding:12px;text-align:center}
+#messages{flex:1;padding:12px;overflow-y:auto}
 .msg{margin:8px 0;padding:10px 14px;border-radius:18px;max-width:80%;font-size:14px;word-wrap:break-word}
 .me{background:#d1f1ff;margin-left:auto}
 .other{background:#eee;margin-right:auto}
 #inputArea{display:flex;border-top:1px solid #ccc}
-#inputArea input{flex:1;padding:14px;border:none;font-size:15px}
-#inputArea button{padding:0 18px;background:#222;color:#fff;border:none}
+#inputArea input{flex:1;border:none}
+#inputArea button{width:auto;padding:0 18px}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -90,34 +71,22 @@ header{background:#222;color:#fff;padding:25px 10px;text-align:center}
 <body>
 
 <header>
-  <div id="quote">حكمة اليوم: الصمت أحيانًا أبلغ من الكلام</div>
+  <div id="quote">حكمة اليوم: الخصوصية الحقيقية تبدأ بالتحكم</div>
 </header>
 
-<button id="secretBtn" title="اضغط لفتح الشات"></button>
+<button id="secretBtn"></button>
 
-<!-- نافذة كلمة السر -->
-<div id="passwordOverlay">
-  <div id="passwordBox">
-    <div>أدخل كلمة المرور</div>
-    <input id="passwordInput" type="password" />
-    <button id="passwordBtn">دخول</button>
-  </div>
-</div>
+<div id="passwordOverlay"><div class="box"><div>أدخل كلمة المرور</div><input id="passwordInput" type="password"><button id="passwordBtn">دخول</button></div></div>
 
-<!-- نافذة الشات -->
-<div id="chatOverlay">
-  <div id="chatBox">
-    <div id="chatHeader">Private Chat</div>
-    <div id="messages"></div>
-    <div id="inputArea">
-      <input id="msgInput" placeholder="اكتب رسالة..." />
-      <button onclick="sendMsg()">إرسال</button>
-    </div>
-  </div>
-</div>
+<div id="blockOverlay"><div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط<br><br>لا يمكن دخول طرف ثالث</div></div>
+
+<div id="chatOverlay"><div id="chatBox">
+  <div id="chatHeader">Private Chat (2 Users Only)</div>
+  <div id="messages"></div>
+  <div id="inputArea"><input id="msgInput" placeholder="اكتب رسالة..."><button onclick="sendMsg()">إرسال</button></div>
+</div></div>
 
 <script>
-/* Firebase */
 const firebaseConfig={
  apiKey:"AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
  authDomain:"todayquote-3a22b.firebaseapp.com",
@@ -129,52 +98,55 @@ const firebaseConfig={
 };
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
-const chatRef=db.ref('chat');
-firebase.auth().signInAnonymously().catch(()=>{});
+firebase.auth().signInAnonymously();
 
 let uid=localStorage.getItem('uid');
 if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)}
 
-/* عناصر واجهة المستخدم */
-const overlayChat=document.getElementById('chatOverlay');
-const overlayPass=document.getElementById('passwordOverlay');
+const usersRef=db.ref('presence');
+const chatRef=db.ref('chat');
+
 const secretBtn=document.getElementById('secretBtn');
 const passwordBtn=document.getElementById('passwordBtn');
+const passOverlay=document.getElementById('passwordOverlay');
+const chatOverlay=document.getElementById('chatOverlay');
+const blockOverlay=document.getElementById('blockOverlay');
 
-/* فتح نافذة كلمة السر */
-secretBtn.addEventListener('click',()=>{
-  overlayPass.style.display='flex';
-});
+secretBtn.onclick=()=>passOverlay.style.display='flex';
 
-/* التحقق من كلمة المرور */
-passwordBtn.addEventListener('click',()=>{
-  const val=document.getElementById('passwordInput').value;
-  if(val==='blobif'){
-    overlayPass.style.display='none';
-    overlayChat.style.display='flex';
+passwordBtn.onclick=()=>{
+ if(passwordInput.value!=='blobif')return;
+ usersRef.once('value',snap=>{
+  const users=snap.val()||{};
+  if(Object.keys(users).length>=2 && !users[uid]){
+    passOverlay.style.display='none';
+    blockOverlay.style.display='flex';
+  }else{
+    usersRef.child(uid).set(true);
+    usersRef.child(uid).onDisconnect().remove();
+    passOverlay.style.display='none';
+    chatOverlay.style.display='flex';
   }
-});
+ });
+};
 
-/* إرسال رسالة */
 function sendMsg(){
-  const i=document.getElementById('msgInput');
-  if(!i.value.trim())return;
-  const r=chatRef.push();
-  r.set({text:i.value,uid:uid,time:Date.now()});
-  setTimeout(()=>r.remove(),5000);
-  i.value='';
+ const i=msgInput;
+ if(!i.value.trim())return;
+ const r=chatRef.push();
+ r.set({text:i.value,uid,time:Date.now()});
+ setTimeout(()=>r.remove(),5000);
+ i.value='';
 }
 
-/* استقبال الرسائل */
 chatRef.on('child_added',s=>{
-  const d=s.val(); if(!d)return;
-  const m=document.createElement('div');
-  m.className='msg '+(d.uid===uid?'me':'other');
-  m.textContent=d.text;
-  const box=document.getElementById('messages');
-  box.appendChild(m);
-  box.scrollTop=box.scrollHeight;
-  setTimeout(()=>m.remove(),5000);
+ const d=s.val(); if(!d)return;
+ const m=document.createElement('div');
+ m.className='msg '+(d.uid===uid?'me':'other');
+ m.textContent=d.text;
+ messages.appendChild(m);
+ messages.scrollTop=messages.scrollHeight;
+ setTimeout(()=>m.remove(),5000);
 });
 </script>
 </body>
