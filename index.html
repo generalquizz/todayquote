@@ -38,12 +38,27 @@ button{background:#222;color:#fff;border:none}
 <header><div id="quote">حكمة اليوم: الخصوصية تبدأ بالتحكم</div></header>
 <button id="secretBtn"></button>
 
-<div id="passOverlay" class="overlay"><div class="box"><div>أدخل كلمة المرور</div><input id="passInput" type="password"><button id="passBtn">دخول</button></div></div>
+<div id="passOverlay" class="overlay">
+  <div class="box">
+    <div>أدخل كلمة المرور</div>
+    <input id="passInput" type="password">
+    <button id="passBtn">دخول</button>
+  </div>
+</div>
 <div id="blockOverlay" class="overlay"><div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div></div>
-<div id="chatOverlay" class="overlay"><div id="chatBox"><div id="chatHeader">Private Chat</div><div id="messages"></div><div id="inputArea"><input id="msgInput" placeholder="اكتب رسالة..."><button onclick="sendMsg()">إرسال</button></div></div></div>
+<div id="chatOverlay" class="overlay">
+  <div id="chatBox">
+    <div id="chatHeader">Private Chat</div>
+    <div id="messages"></div>
+    <div id="inputArea">
+      <input id="msgInput" placeholder="اكتب رسالة...">
+      <button id="sendBtn">إرسال</button>
+    </div>
+  </div>
+</div>
 
 <script>
-/* Firebase Init */
+// Firebase Initialization
 const firebaseConfig={
  apiKey:"AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
  authDomain:"todayquote-3a22b.firebaseapp.com",
@@ -64,53 +79,59 @@ if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)
 const presenceRef=db.ref('presence');
 const chatRef=db.ref('chat');
 
+// DOM Elements
 const secretBtn=document.getElementById('secretBtn');
 const passOverlay=document.getElementById('passOverlay');
 const chatOverlay=document.getElementById('chatOverlay');
 const blockOverlay=document.getElementById('blockOverlay');
 const passBtn=document.getElementById('passBtn');
+const passInput=document.getElementById('passInput');
+const sendBtn=document.getElementById('sendBtn');
+const msgInput=document.getElementById('msgInput');
+const messages=document.getElementById('messages');
 
-secretBtn.onclick=()=>passOverlay.style.display='flex';
+// Show password overlay
+secretBtn.addEventListener('click',()=>{ passOverlay.style.display='flex'; });
 
-passBtn.onclick=()=>{
- if(passInput.value!=='blobif')return;
- presenceRef.once('value').then(snap=>{
-  const users=snap.val()||{};
-  const count=Object.keys(users).length;
-
-  if(count>=2 && !users[uid]){
+// Enter Chat
+passBtn.addEventListener('click',()=>{
+  if(passInput.value !== 'blobif') return;
+  presenceRef.once('value').then(snap=>{
+    const users = snap.val() || {};
+    const count = Object.keys(users).length;
+    if(count >= 2 && !users[uid]){
+      passOverlay.style.display='none';
+      blockOverlay.style.display='flex';
+      return;
+    }
+    // Register user
+    presenceRef.child(uid).set(true);
+    presenceRef.child(uid).onDisconnect().remove();
     passOverlay.style.display='none';
-    blockOverlay.style.display='flex';
-    return;
-  }
+    chatOverlay.style.display='flex';
+  });
+});
 
-  presenceRef.child(uid).set(true);
-  presenceRef.child(uid).onDisconnect().remove();
-
-  passOverlay.style.display='none';
-  chatOverlay.style.display='flex';
- });
-};
-
-/* Send Message */
+// Send Message Function
 function sendMsg(){
- const i=msgInput;
- if(!i.value.trim())return;
- const r=chatRef.push();
- r.set({text:i.value,uid,time:Date.now()});
- setTimeout(()=>r.remove(),5000);
- i.value='';
+  if(!msgInput.value.trim()) return;
+  const r=chatRef.push();
+  r.set({text: msgInput.value, uid, time: Date.now()});
+  setTimeout(()=>r.remove(),5000);
+  msgInput.value='';
 }
 
-/* Receive Messages */
-chatRef.on('child_added',s=>{
- const d=s.val(); if(!d)return;
- const m=document.createElement('div');
- m.className='msg '+(d.uid===uid?'me':'other');
- m.textContent=d.text;
- messages.appendChild(m);
- messages.scrollTop=messages.scrollHeight;
- setTimeout(()=>m.remove(),5000);
+sendBtn.addEventListener('click',sendMsg);
+
+// Receive Messages
+chatRef.on('child_added',snap=>{
+  const d=snap.val(); if(!d) return;
+  const m=document.createElement('div');
+  m.className='msg '+(d.uid===uid?'me':'other');
+  m.textContent=d.text;
+  messages.appendChild(m);
+  messages.scrollTop=messages.scrollHeight;
+  setTimeout(()=>m.remove(),5000);
 });
 </script>
 </body>
