@@ -41,9 +41,7 @@ button{background:#222;color:#fff;border:none}
   </div>
 </div>
 
-<div id="blockOverlay" class="overlay">
-  <div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div>
-</div>
+<div id="blockOverlay" class="overlay"><div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div></div>
 
 <div id="chatOverlay" class="overlay">
   <div id="chatBox">
@@ -57,6 +55,8 @@ button{background:#222;color:#fff;border:none}
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded',function(){
+
 // Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
@@ -73,9 +73,9 @@ const db = firebase.database();
 // Anonymous Auth
 firebase.auth().signInAnonymously().catch(console.error);
 
-// Generate or get UID
+// UID
 let uid = localStorage.getItem('uid');
-if(!uid){uid = Math.random().toString(36).slice(2); localStorage.setItem('uid',uid);}
+if(!uid){ uid = Math.random().toString(36).slice(2); localStorage.setItem('uid',uid); }
 
 // References
 const presenceRef = db.ref('presence');
@@ -96,23 +96,25 @@ const messages = document.getElementById('messages');
 secretBtn.addEventListener('click',()=>{ passOverlay.style.display='flex'; });
 
 // Enter Chat
-passBtn.addEventListener('click',()=>{
-  if(passInput.value !== 'blobif') return;
+passBtn.addEventListener('click',()=>{ enterChat(); });
+passInput.addEventListener('keyup', (e)=>{ if(e.key==='Enter') enterChat(); });
+
+function enterChat(){
+  if(passInput.value!=='blobif') return;
   presenceRef.once('value').then(snap=>{
     const users = snap.val() || {};
     const count = Object.keys(users).length;
-    if(count >= 2 && !users[uid]){
+    if(count>=2 && !users[uid]){
       passOverlay.style.display='none';
       blockOverlay.style.display='flex';
       return;
     }
-    // Register user
     presenceRef.child(uid).set(true);
     presenceRef.child(uid).onDisconnect().remove();
     passOverlay.style.display='none';
     chatOverlay.style.display='flex';
   });
-});
+}
 
 // Send message
 function sendMsg(){
@@ -120,9 +122,10 @@ function sendMsg(){
   const r = chatRef.push();
   r.set({text: msgInput.value, uid, time: Date.now()});
   setTimeout(()=>r.remove(),5000);
-  msgInput.value = '';
+  msgInput.value='';
 }
 sendBtn.addEventListener('click',sendMsg);
+msgInput.addEventListener('keyup',(e)=>{ if(e.key==='Enter') sendMsg(); });
 
 // Receive messages
 chatRef.on('child_added',snap=>{
@@ -135,7 +138,8 @@ chatRef.on('child_added',snap=>{
   messages.scrollTop = messages.scrollHeight;
   setTimeout(()=>m.remove(),5000);
 });
-</script>
 
+});
+</script>
 </body>
 </html>
