@@ -2,38 +2,39 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Today Quote</title>
 
-<!-- ================= STYLE (نفس التنسيق الأصلي) ================= -->
+<!-- ================= MOBILE FIRST STYLE ================= -->
 <style>
+*{box-sizing:border-box}
 body{
   margin:0;
   font-family:Tahoma, Arial;
   background:#f4f4f4;
   color:#333;
+  -webkit-text-size-adjust:100%;
 }
 header{
   background:#222;
   color:#fff;
-  padding:25px 10px;
+  padding:20px 10px;
   text-align:center;
 }
 #quote{
-  font-size:20px;
-  opacity:.9;
+  font-size:18px;
+  line-height:1.6;
 }
 
 /* زر مخفي */
 #secretBtn{
   position:fixed;
-  bottom:8px;
-  left:8px;
-  width:25px;
-  height:25px;
+  bottom:10px;
+  left:10px;
+  width:32px;
+  height:32px;
   background:#f4f4f4;
   border:none;
-  cursor:pointer;
 }
 
 /* ================= CHAT ================= */
@@ -41,56 +42,65 @@ header{
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.75);
+  background:rgba(0,0,0,.85);
   justify-content:center;
   align-items:center;
-  z-index:999;
+  z-index:9999;
 }
 #chatBox{
-  width:360px;
-  height:520px;
+  width:100%;
+  max-width:420px;
+  height:100%;
+  max-height:600px;
   background:#fff;
-  border-radius:10px;
   display:flex;
   flex-direction:column;
-  overflow:hidden;
 }
 #chatHeader{
   background:#222;
   color:#fff;
-  padding:10px;
+  padding:12px;
   text-align:center;
+  font-size:16px;
 }
 #messages{
   flex:1;
-  padding:10px;
+  padding:12px;
   overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 .msg{
-  margin:6px 0;
-  padding:8px 12px;
-  border-radius:6px;
+  margin:8px 0;
+  padding:10px 14px;
+  border-radius:18px;
   max-width:80%;
   font-size:14px;
+  word-wrap:break-word;
 }
-.me{background:#d1f1ff; margin-left:auto;}
-.other{background:#eee; margin-right:auto;}
+.me{background:#d1f1ff; margin-left:auto}
+.other{background:#eee; margin-right:auto}
 #inputArea{
   display:flex;
   border-top:1px solid #ccc;
 }
 #inputArea input{
   flex:1;
-  padding:10px;
+  padding:14px;
   border:none;
   outline:none;
+  font-size:15px;
 }
 #inputArea button{
-  padding:10px 15px;
+  padding:0 18px;
   background:#222;
   color:#fff;
   border:none;
-  cursor:pointer;
+  font-size:15px;
+}
+
+/* iPhone safe area */
+@supports(padding:max(0px)){
+  #chatBox{padding-bottom:env(safe-area-inset-bottom)}
 }
 </style>
 
@@ -112,7 +122,7 @@ header{
     <div id="chatHeader">Private Chat</div>
     <div id="messages"></div>
     <div id="inputArea">
-      <input id="msgInput" placeholder="اكتب رسالة..." />
+      <input id="msgInput" placeholder="اكتب رسالة..." autocomplete="off" />
       <button onclick="sendMsg()">إرسال</button>
     </div>
   </div>
@@ -130,63 +140,49 @@ const firebaseConfig = {
   appId: "1:10962691980:web:a38f4e91310cccba0998a9"
 };
 firebase.initializeApp(firebaseConfig);
-
 const db = firebase.database();
 const chatRef = db.ref('chat');
 
-/* ================= AUTH (كما هو بدون تغيير) ================= */
+/* ================= AUTH ================= */
 firebase.auth().signInAnonymously().catch(()=>{});
 
-/* ================= USER ID (كما هو) ================= */
+/* ================= USER ID ================= */
 let uid = localStorage.getItem('uid');
-if(!uid){
-  uid = Math.random().toString(36).substring(2);
-  localStorage.setItem('uid',uid);
-}
+if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)}
 
-/* ================= UI CONTROL (كما هو) ================= */
-const overlay = document.getElementById('chatOverlay');
-document.getElementById('secretBtn').onclick = ()=>{
-  const p = prompt('كلمة المرور');
-  if(p === 'blobif') overlay.style.display='flex';
+/* ================= UI ================= */
+const overlay=document.getElementById('chatOverlay');
+document.getElementById('secretBtn').onclick=()=>{
+  const p=prompt('كلمة المرور');
+  if(p==='blobif') overlay.style.display='flex';
 };
 
-/* ================= SEND MESSAGE (نفس الدالة) ================= */
+/* ================= SEND ================= */
 function sendMsg(){
-  const input = document.getElementById('msgInput');
-  if(input.value.trim()==='') return;
+  const input=document.getElementById('msgInput');
+  if(!input.value.trim()) return;
 
-  const msgRef = chatRef.push();
-  msgRef.set({
-    text: input.value,
-    uid: uid,
-    time: Date.now()
-  });
+  const ref=chatRef.push();
+  ref.set({text:input.value,uid:uid,time:Date.now()});
 
-  // تدمير ذاتي بعد 5 ثواني
-  setTimeout(()=>{
-    msgRef.remove();
-  },5000);
-
+  setTimeout(()=>{ref.remove()},5000);
   input.value='';
 }
 
-/* ================= RECEIVE MESSAGE (كما هو) ================= */
-chatRef.on('child_added', snap=>{
-  const data = snap.val();
-  if(!data) return;
+/* ================= RECEIVE ================= */
+chatRef.on('child_added',snap=>{
+  const d=snap.val();
+  if(!d) return;
 
-  const div = document.createElement('div');
-  div.className = 'msg ' + (data.uid===uid ? 'me':'other');
-  div.textContent = data.text;
+  const div=document.createElement('div');
+  div.className='msg '+(d.uid===uid?'me':'other');
+  div.textContent=d.text;
 
-  document.getElementById('messages').appendChild(div);
-  document.getElementById('messages').scrollTop = 999999;
+  const box=document.getElementById('messages');
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
 
-  // حذف من الواجهة بعد 5 ثواني
-  setTimeout(()=>{
-    div.remove();
-  },5000);
+  setTimeout(()=>{div.remove()},5000);
 });
 </script>
 </body>
