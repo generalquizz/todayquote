@@ -7,18 +7,8 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Tahoma, Arial;
-  background:#f4f4f4;
-  color:#333;
-}
-header{
-  background:#222;
-  color:#fff;
-  padding:22px 10px;
-  text-align:center;
-}
+body{margin:0;font-family:Tahoma, Arial;background:#f4f4f4;color:#333}
+header{background:#222;color:#fff;padding:25px 10px;text-align:center}
 #quote{font-size:18px;line-height:1.6}
 
 /* زر مخفي */
@@ -26,10 +16,11 @@ header{
   position:fixed;
   bottom:12px;
   left:12px;
-  width:34px;
-  height:34px;
+  width:40px;
+  height:40px;
   background:#f4f4f4;
   border:none;
+  cursor:pointer;
   z-index:1000;
 }
 
@@ -38,7 +29,7 @@ header{
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.8);
+  background:rgba(0,0,0,0.8);
   justify-content:center;
   align-items:center;
   z-index:2000;
@@ -51,27 +42,15 @@ header{
   border-radius:10px;
   text-align:center;
 }
-#passwordBox input{
-  width:100%;
-  padding:12px;
-  font-size:16px;
-  margin-top:10px;
-}
-#passwordBox button{
-  margin-top:15px;
-  padding:10px 20px;
-  background:#222;
-  color:#fff;
-  border:none;
-  font-size:16px;
-}
+#passwordBox input{width:100%;padding:12px;font-size:16px;margin-top:10px}
+#passwordBox button{margin-top:15px;padding:10px 20px;background:#222;color:#fff;border:none;font-size:16px}
 
 /* نافذة الشات */
 #chatOverlay{
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.85);
+  background:rgba(0,0,0,0.85);
   justify-content:center;
   align-items:center;
   z-index:3000;
@@ -96,14 +75,7 @@ header{
   padding:12px;
   overflow-y:auto;
 }
-.msg{
-  margin:8px 0;
-  padding:10px 14px;
-  border-radius:18px;
-  max-width:80%;
-  font-size:14px;
-  word-wrap:break-word;
-}
+.msg{margin:8px 0;padding:10px 14px;border-radius:18px;max-width:80%;font-size:14px;word-wrap:break-word}
 .me{background:#d1f1ff;margin-left:auto}
 .other{background:#eee;margin-right:auto}
 #inputArea{display:flex;border-top:1px solid #ccc}
@@ -121,14 +93,14 @@ header{
   <div id="quote">حكمة اليوم: الصمت أحيانًا أبلغ من الكلام</div>
 </header>
 
-<button id="secretBtn"></button>
+<button id="secretBtn" title="اضغط لفتح الشات"></button>
 
 <!-- نافذة كلمة السر -->
 <div id="passwordOverlay">
   <div id="passwordBox">
     <div>أدخل كلمة المرور</div>
     <input id="passwordInput" type="password" />
-    <button onclick="checkPassword()">دخول</button>
+    <button id="passwordBtn">دخول</button>
   </div>
 </div>
 
@@ -163,19 +135,27 @@ firebase.auth().signInAnonymously().catch(()=>{});
 let uid=localStorage.getItem('uid');
 if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)}
 
+/* عناصر واجهة المستخدم */
+const overlayChat=document.getElementById('chatOverlay');
+const overlayPass=document.getElementById('passwordOverlay');
+const secretBtn=document.getElementById('secretBtn');
+const passwordBtn=document.getElementById('passwordBtn');
+
 /* فتح نافذة كلمة السر */
-document.getElementById('secretBtn').onclick=()=>{
-  document.getElementById('passwordOverlay').style.display='flex';
-};
+secretBtn.addEventListener('click',()=>{
+  overlayPass.style.display='flex';
+});
 
-function checkPassword(){
-  const p=document.getElementById('passwordInput').value;
-  if(p==='blobif'){
-    document.getElementById('passwordOverlay').style.display='none';
-    document.getElementById('chatOverlay').style.display='flex';
+/* التحقق من كلمة المرور */
+passwordBtn.addEventListener('click',()=>{
+  const val=document.getElementById('passwordInput').value;
+  if(val==='blobif'){
+    overlayPass.style.display='none';
+    overlayChat.style.display='flex';
   }
-}
+});
 
+/* إرسال رسالة */
 function sendMsg(){
   const i=document.getElementById('msgInput');
   if(!i.value.trim())return;
@@ -185,6 +165,7 @@ function sendMsg(){
   i.value='';
 }
 
+/* استقبال الرسائل */
 chatRef.on('child_added',s=>{
   const d=s.val(); if(!d)return;
   const m=document.createElement('div');
