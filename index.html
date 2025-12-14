@@ -3,138 +3,115 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Secure Private Chat</title>
-
+<title>Today Quote</title>
 <style>
-body{margin:0;font-family:tahoma;background:#f4f4f4}
-header{background:#222;color:#fff;padding:20px;text-align:center}
-#hiddenBtn{position:fixed;bottom:12px;left:12px;width:40px;height:40px;
-background:#f4f4f4;border:1px solid #ccc;border-radius:8px;
-z-index:10000;cursor:pointer}
-.overlay{display:none;position:fixed;inset:0;
-background:rgba(0,0,0,.8);justify-content:center;align-items:center;z-index:2000}
-.box{background:#fff;width:90%;max-width:360px;padding:20px;border-radius:12px;text-align:center}
+*{box-sizing:border-box}
+body{margin:0;font-family:Tahoma, Arial;background:#f4f4f4;color:#333}
+header{background:#222;color:#fff;padding:25px 10px;text-align:center}
+#quote{font-size:18px;line-height:1.6}
+#secretBtn{position:fixed;bottom:12px;left:12px;width:40px;height:40px;background:#f4f4f4;border:none;cursor:pointer;z-index:1000}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);justify-content:center;align-items:center;z-index:2000}
+.box{background:#fff;width:90%;max-width:340px;padding:20px;border-radius:10px;text-align:center}
 input,button{width:100%;padding:12px;font-size:16px;margin-top:10px}
-button{background:#222;color:#fff;border:none;border-radius:8px}
-#chat{display:none;flex-direction:column;height:100%;max-height:600px;width:90%;max-width:420px;border-radius:12px}
-#msgs{flex:1;padding:10px;overflow-y:auto}
-.msg{margin:8px 0;padding:10px 14px;border-radius:18px;max-width:80%}
+button{background:#222;color:#fff;border:none}
+#chatBox{width:100%;max-width:420px;height:100%;max-height:600px;background:#fff;display:flex;flex-direction:column}
+#chatHeader{background:#222;color:#fff;padding:12px;text-align:center}
+#messages{flex:1;padding:12px;overflow-y:auto}
+.msg{margin:8px 0;padding:10px 14px;border-radius:18px;max-width:80%;font-size:14px;word-wrap:break-word}
 .me{background:#d1f1ff;margin-left:auto}
 .other{background:#eee;margin-right:auto}
-#sendArea{display:flex;border-top:1px solid #ccc}
-#sendArea input{flex:1;border:none;padding:10px;font-size:16px}
-#sendArea button{width:auto;padding:0 18px}
+#inputArea{display:flex;border-top:1px solid #ccc}
+#inputArea input{flex:1;border:none}
+#inputArea button{width:auto;padding:0 18px}
 </style>
-
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 </head>
-
 <body>
+<header><div id="quote">حكمة اليوم: الخصوصية تبدأ بالتحكم</div></header>
+<button id="secretBtn"></button>
 
-<header>حكمة اليوم: الخصوصية مسؤوليتك</header>
-<button id="hiddenBtn" title="افتح الشات"></button>
-
-<div id="passBox" class="overlay">
-  <div class="box">
-    <div>أدخل كلمة المرور</div>
-    <input id="pass" type="password">
-    <button onclick="login()">دخول</button>
-  </div>
-</div>
-
-<div id="block" class="overlay">
-  <div class="box">⚠️ الشات مستخدم بين طرفين فقط</div>
-</div>
-
-<div id="chatBox" class="overlay">
-  <div class="box" id="chat">
-    <div id="msgs"></div>
-    <div id="sendArea">
-      <input id="txt" placeholder="اكتب رسالة...">
-      <button onclick="send()">إرسال</button>
-    </div>
-  </div>
-</div>
+<div id="passOverlay" class="overlay"><div class="box"><div>أدخل كلمة المرور</div><input id="passInput" type="password"><button id="passBtn">دخول</button></div></div>
+<div id="blockOverlay" class="overlay"><div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div></div>
+<div id="chatOverlay" class="overlay"><div id="chatBox"><div id="chatHeader">Private Chat</div><div id="messages"></div><div id="inputArea"><input id="msgInput" placeholder="اكتب رسالة..."><button id="sendBtn">إرسال</button></div></div></div>
 
 <script>
-/* ================= Firebase ================= */
-firebase.initializeApp({
-  apiKey: "AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
-  authDomain: "todayquote-3a22b.firebaseapp.com",
-  databaseURL: "https://todayquote-3a22b-default-rtdb.firebaseio.com"
-});
-firebase.auth().signInAnonymously();
-const db = firebase.database();
+// ====== السبب الحقيقي للمشكلة ======
+// قراءة presence كانت تفشل بصمت بسبب قواعد Firebase، فـ once('value') لا يُكمل => زر الدخول يبدو معطلاً.
+// الحل: استخدام Transaction ذريّة على مسار القفل دون قراءة مسبقة.
 
-/* ================= UID ================= */
-let uid = localStorage.uid || Math.random().toString(36).slice(2);
-localStorage.uid = uid;
+const firebaseConfig={
+ apiKey:"AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
+ authDomain:"todayquote-3a22b.firebaseapp.com",
+ databaseURL:"https://todayquote-3a22b-default-rtdb.firebaseio.com",
+ projectId:"todayquote-3a22b",
+ storageBucket:"todayquote-3a22b.firebasestorage.app",
+ messagingSenderId:"10962691980",
+ appId:"1:10962691980:web:a38f4e91310cccba0998a9"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
 
-/* ================= DOM ================= */
-const hiddenBtn = document.getElementById("hiddenBtn");
-const passBox = document.getElementById("passBox");
-const chatBox = document.getElementById("chatBox");
-const block = document.getElementById("block");
-const chat = document.getElementById("chat");
-const msgs = document.getElementById("msgs");
-const txt = document.getElementById("txt");
+firebase.auth().signInAnonymously().catch(console.error);
 
-hiddenBtn.onclick = () => passBox.style.display="flex";
-passBox.addEventListener("keyup", e => { if(e.key==="Enter") login(); });
+let uid=localStorage.getItem('uid');
+if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)}
 
-/* ================= تشفير بسيط ================= */
-async function enc(t){return btoa(unescape(encodeURIComponent(t)));}
-async function dec(t){return decodeURIComponent(escape(atob(t)));}
+const lockRef=db.ref('lock'); // يحتوي على المستخدمين النشطين (حد أقصى 2)
+const chatRef=db.ref('chat');
 
-/* ================= دخول الشات ================= */
-async function login(){
-  if(pass.value!=="blobif") return;
+const secretBtn=document.getElementById('secretBtn');
+const passOverlay=document.getElementById('passOverlay');
+const chatOverlay=document.getElementById('chatOverlay');
+const blockOverlay=document.getElementById('blockOverlay');
+const passBtn=document.getElementById('passBtn');
+const passInput=document.getElementById('passInput');
+const sendBtn=document.getElementById('sendBtn');
+const msgInput=document.getElementById('msgInput');
+const messages=document.getElementById('messages');
 
-  try{
-    const snap = await db.ref("users").once("value");
-    const users = snap.val()||{};
-    if(Object.keys(users).length>=2 && !users[uid]){
-      passBox.style.display="none";
-      block.style.display="flex";
-      return;
-    }
+secretBtn.onclick=()=>passOverlay.style.display='flex';
 
-    await db.ref("users/"+uid).set(true);
-    db.ref("users/"+uid).onDisconnect().remove();
+passBtn.onclick=enterChat;
+passInput.onkeyup=(e)=>{ if(e.key==='Enter') enterChat(); };
 
-    passBox.style.display="none";
-    chatBox.style.display="flex";
-    chat.style.display="flex";
-  }catch(e){console.error(e);}
+function enterChat(){
+  if(passInput.value!=='blobif') return;
+
+  lockRef.transaction(current=>{
+    current=current||{};
+    if(current[uid]) return current; // نفس المستخدم
+    if(Object.keys(current).length>=2) return; // رفض الطرف الثالث
+    current[uid]=true; return current;
+  },(err,committed)=>{
+    passOverlay.style.display='none';
+    if(!committed){ blockOverlay.style.display='flex'; return; }
+    lockRef.child(uid).onDisconnect().remove();
+    chatOverlay.style.display='flex';
+  });
 }
 
-/* ================= إرسال الرسائل ================= */
-async function send(){
-  if(!txt.value) return;
-  const m = db.ref("msgs").push();
-  m.set({u:uid,t:await enc(txt.value)});
-  setTimeout(()=>m.remove(),5000);
-  txt.value="";
+function sendMsg(){
+  if(!msgInput.value.trim()) return;
+  const r=chatRef.push();
+  r.set({text:msgInput.value,uid,time:Date.now()});
+  setTimeout(()=>r.remove(),5000);
+  msgInput.value='';
 }
 
-/* ================= استقبال الرسائل ================= */
-db.ref("msgs").on("child_added", async s=>{
+sendBtn.onclick=sendMsg;
+msgInput.onkeyup=(e)=>{ if(e.key==='Enter') sendMsg(); };
+
+chatRef.on('child_added',s=>{
   const d=s.val(); if(!d) return;
-  const div = document.createElement("div");
-  div.className="msg "+(d.u===uid?"me":"other");
-  div.textContent = await dec(d.t);
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  setTimeout(()=>div.remove(),5000);
-});
-
-/* ================= تنظيف عند الخروج ================= */
-db.ref("users").on("value",s=>{
-  if(!s.exists()) db.ref("msgs").remove();
+  const m=document.createElement('div');
+  m.className='msg '+(d.uid===uid?'me':'other');
+  m.textContent=d.text;
+  messages.appendChild(m);
+  messages.scrollTop=messages.scrollHeight;
+  setTimeout(()=>m.remove(),5000);
 });
 </script>
-
 </body>
 </html>
