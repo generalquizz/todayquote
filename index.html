@@ -127,20 +127,29 @@ async function enterChat(){
 
   lockRef.transaction(current=>{
     current = current || {};
-    if(current[uid]) return current;           // same device
-    if(Object.keys(current).length >= 2) return; // block third
+    if(current[uid]) return current;            // نفس الجهاز مسموح
+    if(Object.keys(current).length >= 2) return; // منع طرف ثالث
     current[uid] = true; return current;
   }, async (err, committed)=>{
-    passOverlay.style.display='none';
-    if(!committed){ blockOverlay.style.display='flex'; return; }
+    if(err || !committed){
+      passOverlay.style.display='none';
+      blockOverlay.style.display='flex';
+      return;
+    }
 
-    // onDisconnect cleanup
+    // تسجيل الخروج التلقائي
     lockRef.child(uid).onDisconnect().remove();
 
-    // Establish E2EE session key
-    await establishKey();
-
-    chatOverlay.style.display='flex';
+    // تأسيس مفتاح التشفير قبل إظهار الشات
+    try{
+      await establishKey();
+      passOverlay.style.display='none';
+      chatOverlay.style.display='flex';
+    }catch(e){
+      // في حال فشل المفتاح لا نفتح الشات
+      lockRef.child(uid).remove();
+      passOverlay.style.display='flex';
+    }
   });
 }
 
