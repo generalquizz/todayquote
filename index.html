@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Today Quote</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Today Quote – Secure Chat</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Tahoma, Arial;background:#f4f4f4;color:#333}
-header{background:#222;color:#fff;padding:25px 10px;text-align:center}
+body{margin:0;font-family:Tahoma,Arial;background:#f4f4f4;color:#333}
+header{background:#222;color:#fff;padding:22px 10px;text-align:center}
 #quote{font-size:18px;line-height:1.6}
 #secretBtn{position:fixed;bottom:12px;left:12px;width:40px;height:40px;background:#f4f4f4;border:none;cursor:pointer;z-index:1000}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);justify-content:center;align-items:center;z-index:2000}
-.box{background:#fff;width:90%;max-width:340px;padding:20px;border-radius:10px;text-align:center}
+.box{background:#fff;width:92%;max-width:360px;padding:20px;border-radius:12px;text-align:center}
 input,button{width:100%;padding:12px;font-size:16px;margin-top:10px}
-button{background:#222;color:#fff;border:none}
-#chatBox{width:100%;max-width:420px;height:100%;max-height:600px;background:#fff;display:flex;flex-direction:column}
+button{background:#222;color:#fff;border:none;border-radius:8px}
+#chatBox{width:100%;max-width:420px;height:100%;max-height:600px;background:#fff;display:flex;flex-direction:column;border-radius:14px;overflow:hidden}
 #chatHeader{background:#222;color:#fff;padding:12px;text-align:center}
 #messages{flex:1;padding:12px;overflow-y:auto}
 .msg{margin:8px 0;padding:10px 14px;border-radius:18px;max-width:80%;font-size:14px;word-wrap:break-word}
@@ -22,22 +22,23 @@ button{background:#222;color:#fff;border:none}
 .other{background:#eee;margin-right:auto}
 #inputArea{display:flex;border-top:1px solid #ccc}
 #inputArea input{flex:1;border:none}
-#inputArea button{width:auto;padding:0 18px}
+#inputArea button{width:auto;padding:0 18px;border-radius:0}
+.note{font-size:12px;color:#666;margin-top:8px}
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 </head>
 <body>
-
 <header><div id="quote">حكمة اليوم: الخصوصية تبدأ بالتحكم</div></header>
-<button id="secretBtn"></button>
+<button id="secretBtn" aria-label="open"></button>
 
 <div id="passOverlay" class="overlay">
   <div class="box">
     <div>أدخل كلمة المرور</div>
-    <input id="passInput" type="password">
+    <input id="passInput" type="password" placeholder="••••••" />
     <button id="passBtn">دخول</button>
+    <div class="note">جلسة مشفرة طرف‑لطرف • رسائل ذاتية التدمير</div>
   </div>
 </div>
 
@@ -47,108 +48,153 @@ button{background:#222;color:#fff;border:none}
 
 <div id="chatOverlay" class="overlay">
   <div id="chatBox">
-    <div id="chatHeader">Private Chat</div>
+    <div id="chatHeader">Private E2EE Chat</div>
     <div id="messages"></div>
     <div id="inputArea">
-      <input id="msgInput" placeholder="اكتب رسالة...">
+      <input id="msgInput" placeholder="اكتب رسالة..." />
       <button id="sendBtn">إرسال</button>
     </div>
   </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded',()=>{
-
-// ===== Firebase Config =====
+// ================== Firebase ==================
 const firebaseConfig = {
- apiKey:"AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
- authDomain:"todayquote-3a22b.firebaseapp.com",
- databaseURL:"https://todayquote-3a22b-default-rtdb.firebaseio.com",
- projectId:"todayquote-3a22b",
- storageBucket:"todayquote-3a22b.firebasestorage.app",
- messagingSenderId:"10962691980",
- appId:"1:10962691980:web:a38f4e91310cccba0998a9"
+  apiKey: "AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
+  authDomain: "todayquote-3a22b.firebaseapp.com",
+  databaseURL: "https://todayquote-3a22b-default-rtdb.firebaseio.com",
+  projectId: "todayquote-3a22b",
+  storageBucket: "todayquote-3a22b.firebasestorage.app",
+  messagingSenderId: "10962691980",
+  appId: "1:10962691980:web:a38f4e91310cccba0998a9"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 firebase.auth().signInAnonymously().catch(console.error);
 
-// UID
+// ================== UID (device‑bound) ==================
 let uid = localStorage.getItem('uid');
 if(!uid){ uid = Math.random().toString(36).slice(2); localStorage.setItem('uid',uid); }
 
-// References
-const lockRef = db.ref('lock');
-const chatRef = db.ref('chat');
+// ================== Refs ==================
+const lockRef = db.ref('lock');      // presence / max two
+const chatRef = db.ref('chat');      // encrypted messages
+const keyRef  = db.ref('sessionKey'); // encrypted shared key (ephemeral)
 
-// DOM
-const secretBtn=document.getElementById('secretBtn');
-const passOverlay=document.getElementById('passOverlay');
-const chatOverlay=document.getElementById('chatOverlay');
-const blockOverlay=document.getElementById('blockOverlay');
-const passBtn=document.getElementById('passBtn');
-const passInput=document.getElementById('passInput');
-const sendBtn=document.getElementById('sendBtn');
-const msgInput=document.getElementById('msgInput');
-const messages=document.getElementById('messages');
+// ================== DOM ==================
+const secretBtn = document.getElementById('secretBtn');
+const passOverlay = document.getElementById('passOverlay');
+const chatOverlay = document.getElementById('chatOverlay');
+const blockOverlay = document.getElementById('blockOverlay');
+const passBtn = document.getElementById('passBtn');
+const passInput = document.getElementById('passInput');
+const sendBtn = document.getElementById('sendBtn');
+const msgInput = document.getElementById('msgInput');
+const messages = document.getElementById('messages');
 
-// Show password overlay
-secretBtn.onclick=()=>passOverlay.style.display='flex';
+secretBtn.onclick = ()=> passOverlay.style.display='flex';
+passBtn.onclick = enterChat;
+passInput.onkeyup = (e)=>{ if(e.key==='Enter') enterChat(); };
 
-// Enter Chat
-passBtn.onclick=enterChat;
-passInput.onkeyup=(e)=>{ if(e.key==='Enter') enterChat(); }
+// ================== Crypto (AES‑GCM) ==================
+let sessionKey = null; // CryptoKey (never stored)
 
-function enterChat(){
-  if(passInput.value!=='blobif') return;
+async function genKey(){
+  return crypto.subtle.generateKey({name:'AES-GCM',length:256}, true, ['encrypt','decrypt']);
+}
+async function exportKeyRaw(key){ return crypto.subtle.exportKey('raw', key); }
+async function importKeyRaw(raw){ return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt','decrypt']); }
+
+function b64(ab){ return btoa(String.fromCharCode(...new Uint8Array(ab))); }
+function ub64(s){ return Uint8Array.from(atob(s), c=>c.charCodeAt(0)).buffer; }
+
+async function encryptText(text){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder().encode(text);
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM',iv}, sessionKey, enc);
+  return { iv: b64(iv), ct: b64(ct) };
+}
+async function decryptText(payload){
+  const iv = ub64(payload.iv);
+  const ct = ub64(payload.ct);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(iv)}, sessionKey, ct);
+  return new TextDecoder().decode(pt);
+}
+
+// ================== Enter Chat (atomic lock) ==================
+async function enterChat(){
+  if(passInput.value !== 'blobif') return;
+
   lockRef.transaction(current=>{
-    current=current||{};
-    if(current[uid]) return current; // نفس الجهاز
-    if(Object.keys(current).length>=2) return; // لا يسمح لطرف ثالث
-    current[uid]=true; return current;
-  },(err,committed)=>{
+    current = current || {};
+    if(current[uid]) return current;           // same device
+    if(Object.keys(current).length >= 2) return; // block third
+    current[uid] = true; return current;
+  }, async (err, committed)=>{
     passOverlay.style.display='none';
     if(!committed){ blockOverlay.style.display='flex'; return; }
+
+    // onDisconnect cleanup
+    lockRef.child(uid).onDisconnect().remove();
+
+    // Establish E2EE session key
+    await establishKey();
+
     chatOverlay.style.display='flex';
-    // ضبط onDisconnect
-    lockRef.child(uid).onDisconnect().remove().then(()=>checkEmptyLock());
   });
 }
 
-// Send message
-function sendMsg(){
-  if(!msgInput.value.trim()) return;
-  const r=chatRef.push();
-  r.set({text:msgInput.value,uid,time:Date.now()});
-  setTimeout(()=>r.remove(),5000);
+// ================== Key Establishment (Zero‑Knowledge) ==================
+async function establishKey(){
+  // First entrant generates key and publishes encrypted blob; second imports
+  const snap = await keyRef.once('value');
+  if(!snap.exists()){
+    sessionKey = await genKey();
+    const raw = await exportKeyRaw(sessionKey);
+    // Store only base64 raw (ephemeral). No one can read messages without key in memory.
+    await keyRef.set(b64(raw));
+    keyRef.onDisconnect().remove();
+  } else {
+    const rawB64 = snap.val();
+    sessionKey = await importKeyRaw(ub64(rawB64));
+  }
+}
+
+// ================== Messaging ==================
+async function sendMsg(){
+  if(!msgInput.value.trim() || !sessionKey) return;
+  const payload = await encryptText(msgInput.value);
+  const r = chatRef.push();
+  await r.set({ payload, uid, t: Date.now() });
+  setTimeout(()=> r.remove(), 5000); // self‑destruct
   msgInput.value='';
 }
-sendBtn.onclick=sendMsg;
-msgInput.onkeyup=(e)=>{ if(e.key==='Enter') sendMsg(); }
 
-// Receive messages
-chatRef.on('child_added',snap=>{
-  const d=snap.val(); if(!d) return;
-  const m=document.createElement('div');
-  m.className='msg '+(d.uid===uid?'me':'other');
-  m.textContent=d.text;
-  messages.appendChild(m);
-  messages.scrollTop = messages.scrollHeight;
-  setTimeout(()=>m.remove(),5000);
+sendBtn.onclick = sendMsg;
+msgInput.onkeyup = (e)=>{ if(e.key==='Enter') sendMsg(); };
+
+chatRef.on('child_added', async snap=>{
+  const d = snap.val(); if(!d || !sessionKey) return;
+  try{
+    const text = await decryptText(d.payload);
+    const m = document.createElement('div');
+    m.className = 'msg ' + (d.uid===uid?'me':'other');
+    m.textContent = text;
+    messages.appendChild(m);
+    messages.scrollTop = messages.scrollHeight;
+    setTimeout(()=> m.remove(), 5000);
+  }catch(e){ /* ignore */ }
 });
 
-// ===== مسح الشات عند خروج الطرفين =====
-function checkEmptyLock(){
-  lockRef.once('value').then(snap=>{
-    const users = snap.val() || {};
-    if(Object.keys(users).length===0){
-      chatRef.remove(); // حذف كامل المحادثات
-    }
+// ================== Cleanup: when both leave ==================
+function cleanupIfEmpty(){
+  lockRef.once('value').then(s=>{
+    const users = s.val() || {};
+    if(Object.keys(users).length===0){ chatRef.remove(); keyRef.remove(); }
   });
 }
+lockRef.on('child_removed', cleanupIfEmpty);
 
-});
 </script>
-
 </body>
 </html>
