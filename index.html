@@ -2,22 +2,18 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Today Quote</title>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Tahoma, Arial;background:#f4f4f4;color:#333}
 header{background:#222;color:#fff;padding:25px 10px;text-align:center}
 #quote{font-size:18px;line-height:1.6}
-
 #secretBtn{position:fixed;bottom:12px;left:12px;width:40px;height:40px;background:#f4f4f4;border:none;cursor:pointer;z-index:1000}
-
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);justify-content:center;align-items:center;z-index:2000}
 .box{background:#fff;width:90%;max-width:340px;padding:20px;border-radius:10px;text-align:center}
 input,button{width:100%;padding:12px;font-size:16px;margin-top:10px}
 button{background:#222;color:#fff;border:none}
-
 #chatBox{width:100%;max-width:420px;height:100%;max-height:600px;background:#fff;display:flex;flex-direction:column}
 #chatHeader{background:#222;color:#fff;padding:12px;text-align:center}
 #messages{flex:1;padding:12px;overflow-y:auto}
@@ -28,7 +24,6 @@ button{background:#222;color:#fff;border:none}
 #inputArea input{flex:1;border:none}
 #inputArea button{width:auto;padding:0 18px}
 </style>
-
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -45,7 +40,11 @@ button{background:#222;color:#fff;border:none}
     <button id="passBtn">دخول</button>
   </div>
 </div>
-<div id="blockOverlay" class="overlay"><div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div></div>
+
+<div id="blockOverlay" class="overlay">
+  <div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div>
+</div>
+
 <div id="chatOverlay" class="overlay">
   <div id="chatBox">
     <div id="chatHeader">Private Chat</div>
@@ -58,37 +57,40 @@ button{background:#222;color:#fff;border:none}
 </div>
 
 <script>
-// Firebase Initialization
-const firebaseConfig={
- apiKey:"AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
- authDomain:"todayquote-3a22b.firebaseapp.com",
- databaseURL:"https://todayquote-3a22b-default-rtdb.firebaseio.com",
- projectId:"todayquote-3a22b",
- storageBucket:"todayquote-3a22b.firebasestorage.app",
- messagingSenderId:"10962691980",
- appId:"1:10962691980:web:a38f4e91310cccba0998a9"
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
+  authDomain: "todayquote-3a22b.firebaseapp.com",
+  databaseURL: "https://todayquote-3a22b-default-rtdb.firebaseio.com",
+  projectId: "todayquote-3a22b",
+  storageBucket: "todayquote-3a22b.firebasestorage.app",
+  messagingSenderId: "10962691980",
+  appId: "1:10962691980:web:a38f4e91310cccba0998a9"
 };
 firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+const db = firebase.database();
 
-firebase.auth().signInAnonymously().catch(()=>{});
+// Anonymous Auth
+firebase.auth().signInAnonymously().catch(console.error);
 
-let uid=localStorage.getItem('uid');
-if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)}
+// Generate or get UID
+let uid = localStorage.getItem('uid');
+if(!uid){uid = Math.random().toString(36).slice(2); localStorage.setItem('uid',uid);}
 
-const presenceRef=db.ref('presence');
-const chatRef=db.ref('chat');
+// References
+const presenceRef = db.ref('presence');
+const chatRef = db.ref('chat');
 
 // DOM Elements
-const secretBtn=document.getElementById('secretBtn');
-const passOverlay=document.getElementById('passOverlay');
-const chatOverlay=document.getElementById('chatOverlay');
-const blockOverlay=document.getElementById('blockOverlay');
-const passBtn=document.getElementById('passBtn');
-const passInput=document.getElementById('passInput');
-const sendBtn=document.getElementById('sendBtn');
-const msgInput=document.getElementById('msgInput');
-const messages=document.getElementById('messages');
+const secretBtn = document.getElementById('secretBtn');
+const passOverlay = document.getElementById('passOverlay');
+const chatOverlay = document.getElementById('chatOverlay');
+const blockOverlay = document.getElementById('blockOverlay');
+const passBtn = document.getElementById('passBtn');
+const passInput = document.getElementById('passInput');
+const sendBtn = document.getElementById('sendBtn');
+const msgInput = document.getElementById('msgInput');
+const messages = document.getElementById('messages');
 
 // Show password overlay
 secretBtn.addEventListener('click',()=>{ passOverlay.style.display='flex'; });
@@ -112,27 +114,28 @@ passBtn.addEventListener('click',()=>{
   });
 });
 
-// Send Message Function
+// Send message
 function sendMsg(){
   if(!msgInput.value.trim()) return;
-  const r=chatRef.push();
+  const r = chatRef.push();
   r.set({text: msgInput.value, uid, time: Date.now()});
   setTimeout(()=>r.remove(),5000);
-  msgInput.value='';
+  msgInput.value = '';
 }
-
 sendBtn.addEventListener('click',sendMsg);
 
-// Receive Messages
+// Receive messages
 chatRef.on('child_added',snap=>{
-  const d=snap.val(); if(!d) return;
-  const m=document.createElement('div');
-  m.className='msg '+(d.uid===uid?'me':'other');
-  m.textContent=d.text;
+  const d = snap.val();
+  if(!d) return;
+  const m = document.createElement('div');
+  m.className = 'msg '+(d.uid===uid?'me':'other');
+  m.textContent = d.text;
   messages.appendChild(m);
-  messages.scrollTop=messages.scrollHeight;
+  messages.scrollTop = messages.scrollHeight;
   setTimeout(()=>m.remove(),5000);
 });
 </script>
+
 </body>
 </html>
