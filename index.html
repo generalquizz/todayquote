@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Today Quote</title>
 
-<!-- ================= MOBILE FIRST STYLE ================= -->
+<!-- ================= STYLE ================= -->
 <style>
 *{box-sizing:border-box}
 body{
@@ -18,7 +18,7 @@ body{
 header{
   background:#222;
   color:#fff;
-  padding:20px 10px;
+  padding:25px 10px;
   text-align:center;
 }
 #quote{
@@ -35,6 +35,8 @@ header{
   height:32px;
   background:#f4f4f4;
   border:none;
+  cursor:pointer;
+  z-index:1000;
 }
 
 /* ================= CHAT ================= */
@@ -55,6 +57,8 @@ header{
   background:#fff;
   display:flex;
   flex-direction:column;
+  border-radius:10px;
+  overflow:hidden;
 }
 #chatHeader{
   background:#222;
@@ -115,7 +119,8 @@ header{
   <div id="quote">حكمة اليوم: الصمت أحيانًا أبلغ من الكلام</div>
 </header>
 
-<button id="secretBtn"></button>
+<!-- زر مخفي للوصول للشات -->
+<button id="secretBtn" title="اضغط لفتح الشات"></button>
 
 <div id="chatOverlay">
   <div id="chatBox">
@@ -150,38 +155,34 @@ firebase.auth().signInAnonymously().catch(()=>{});
 let uid = localStorage.getItem('uid');
 if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)}
 
-/* ================= UI ================= */
+/* ================= UI CONTROL ================= */
 const overlay=document.getElementById('chatOverlay');
-document.getElementById('secretBtn').onclick=()=>{
+const secretBtn=document.getElementById('secretBtn');
+secretBtn.onclick=()=>{
   const p=prompt('كلمة المرور');
   if(p==='blobif') overlay.style.display='flex';
 };
 
-/* ================= SEND ================= */
+/* ================= SEND MESSAGE ================= */
 function sendMsg(){
   const input=document.getElementById('msgInput');
   if(!input.value.trim()) return;
-
   const ref=chatRef.push();
   ref.set({text:input.value,uid:uid,time:Date.now()});
-
   setTimeout(()=>{ref.remove()},5000);
   input.value='';
 }
 
-/* ================= RECEIVE ================= */
+/* ================= RECEIVE MESSAGE ================= */
 chatRef.on('child_added',snap=>{
   const d=snap.val();
   if(!d) return;
-
   const div=document.createElement('div');
   div.className='msg '+(d.uid===uid?'me':'other');
   div.textContent=d.text;
-
   const box=document.getElementById('messages');
   box.appendChild(div);
   box.scrollTop=box.scrollHeight;
-
   setTimeout(()=>{div.remove()},5000);
 });
 </script>
