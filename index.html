@@ -29,19 +29,38 @@ button{background:#222;color:#fff;border:none}
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 </head>
 <body>
+
 <header><div id="quote">حكمة اليوم: الخصوصية تبدأ بالتحكم</div></header>
 <button id="secretBtn"></button>
 
-<div id="passOverlay" class="overlay"><div class="box"><div>أدخل كلمة المرور</div><input id="passInput" type="password"><button id="passBtn">دخول</button></div></div>
-<div id="blockOverlay" class="overlay"><div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div></div>
-<div id="chatOverlay" class="overlay"><div id="chatBox"><div id="chatHeader">Private Chat</div><div id="messages"></div><div id="inputArea"><input id="msgInput" placeholder="اكتب رسالة..."><button id="sendBtn">إرسال</button></div></div></div>
+<div id="passOverlay" class="overlay">
+  <div class="box">
+    <div>أدخل كلمة المرور</div>
+    <input id="passInput" type="password">
+    <button id="passBtn">دخول</button>
+  </div>
+</div>
+
+<div id="blockOverlay" class="overlay">
+  <div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div>
+</div>
+
+<div id="chatOverlay" class="overlay">
+  <div id="chatBox">
+    <div id="chatHeader">Private Chat</div>
+    <div id="messages"></div>
+    <div id="inputArea">
+      <input id="msgInput" placeholder="اكتب رسالة...">
+      <button id="sendBtn">إرسال</button>
+    </div>
+  </div>
+</div>
 
 <script>
-// ====== السبب الحقيقي للمشكلة ======
-// قراءة presence كانت تفشل بصمت بسبب قواعد Firebase، فـ once('value') لا يُكمل => زر الدخول يبدو معطلاً.
-// الحل: استخدام Transaction ذريّة على مسار القفل دون قراءة مسبقة.
+document.addEventListener('DOMContentLoaded',()=>{
 
-const firebaseConfig={
+// ===== Firebase Config =====
+const firebaseConfig = {
  apiKey:"AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
  authDomain:"todayquote-3a22b.firebaseapp.com",
  databaseURL:"https://todayquote-3a22b-default-rtdb.firebaseio.com",
@@ -51,16 +70,18 @@ const firebaseConfig={
  appId:"1:10962691980:web:a38f4e91310cccba0998a9"
 };
 firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
-
+const db = firebase.database();
 firebase.auth().signInAnonymously().catch(console.error);
 
-let uid=localStorage.getItem('uid');
-if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)}
+// UID
+let uid = localStorage.getItem('uid');
+if(!uid){ uid = Math.random().toString(36).slice(2); localStorage.setItem('uid',uid); }
 
-const lockRef=db.ref('lock'); // يحتوي على المستخدمين النشطين (حد أقصى 2)
-const chatRef=db.ref('chat');
+// References
+const lockRef = db.ref('lock');
+const chatRef = db.ref('chat');
 
+// DOM
 const secretBtn=document.getElementById('secretBtn');
 const passOverlay=document.getElementById('passOverlay');
 const chatOverlay=document.getElementById('chatOverlay');
@@ -71,27 +92,30 @@ const sendBtn=document.getElementById('sendBtn');
 const msgInput=document.getElementById('msgInput');
 const messages=document.getElementById('messages');
 
+// Show password overlay
 secretBtn.onclick=()=>passOverlay.style.display='flex';
 
+// Enter Chat
 passBtn.onclick=enterChat;
-passInput.onkeyup=(e)=>{ if(e.key==='Enter') enterChat(); };
+passInput.onkeyup=(e)=>{ if(e.key==='Enter') enterChat(); }
 
 function enterChat(){
   if(passInput.value!=='blobif') return;
-
   lockRef.transaction(current=>{
     current=current||{};
-    if(current[uid]) return current; // نفس المستخدم
-    if(Object.keys(current).length>=2) return; // رفض الطرف الثالث
+    if(current[uid]) return current; // نفس الجهاز
+    if(Object.keys(current).length>=2) return; // لا يسمح لطرف ثالث
     current[uid]=true; return current;
   },(err,committed)=>{
     passOverlay.style.display='none';
     if(!committed){ blockOverlay.style.display='flex'; return; }
-    lockRef.child(uid).onDisconnect().remove();
     chatOverlay.style.display='flex';
+    // ضبط onDisconnect
+    lockRef.child(uid).onDisconnect().remove().then(()=>checkEmptyLock());
   });
 }
 
+// Send message
 function sendMsg(){
   if(!msgInput.value.trim()) return;
   const r=chatRef.push();
@@ -99,19 +123,32 @@ function sendMsg(){
   setTimeout(()=>r.remove(),5000);
   msgInput.value='';
 }
-
 sendBtn.onclick=sendMsg;
-msgInput.onkeyup=(e)=>{ if(e.key==='Enter') sendMsg(); };
+msgInput.onkeyup=(e)=>{ if(e.key==='Enter') sendMsg(); }
 
-chatRef.on('child_added',s=>{
-  const d=s.val(); if(!d) return;
+// Receive messages
+chatRef.on('child_added',snap=>{
+  const d=snap.val(); if(!d) return;
   const m=document.createElement('div');
   m.className='msg '+(d.uid===uid?'me':'other');
   m.textContent=d.text;
   messages.appendChild(m);
-  messages.scrollTop=messages.scrollHeight;
+  messages.scrollTop = messages.scrollHeight;
   setTimeout(()=>m.remove(),5000);
 });
+
+// ===== مسح الشات عند خروج الطرفين =====
+function checkEmptyLock(){
+  lockRef.once('value').then(snap=>{
+    const users = snap.val() || {};
+    if(Object.keys(users).length===0){
+      chatRef.remove(); // حذف كامل المحادثات
+    }
+  });
+}
+
+});
 </script>
+
 </body>
 </html>
