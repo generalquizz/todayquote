@@ -11,49 +11,14 @@ body{margin:0;font-family:Tahoma, Arial;background:#f4f4f4;color:#333}
 header{background:#222;color:#fff;padding:25px 10px;text-align:center}
 #quote{font-size:18px;line-height:1.6}
 
-#secretBtn{
-  position:fixed;
-  bottom:12px;
-  left:12px;
-  width:40px;
-  height:40px;
-  background:#f4f4f4;
-  border:none;
-  cursor:pointer;
-  z-index:1000;
-}
+#secretBtn{position:fixed;bottom:12px;left:12px;width:40px;height:40px;background:#f4f4f4;border:none;cursor:pointer;z-index:1000}
 
-#passwordOverlay,#blockOverlay,#chatOverlay{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.8);
-  justify-content:center;
-  align-items:center;
-  z-index:2000;
-}
-
-.box{
-  background:#fff;
-  width:90%;
-  max-width:340px;
-  padding:20px;
-  border-radius:10px;
-  text-align:center;
-}
-
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);justify-content:center;align-items:center;z-index:2000}
+.box{background:#fff;width:90%;max-width:340px;padding:20px;border-radius:10px;text-align:center}
 input,button{width:100%;padding:12px;font-size:16px;margin-top:10px}
 button{background:#222;color:#fff;border:none}
 
-#chatBox{
-  width:100%;
-  max-width:420px;
-  height:100%;
-  max-height:600px;
-  background:#fff;
-  display:flex;
-  flex-direction:column;
-}
+#chatBox{width:100%;max-width:420px;height:100%;max-height:600px;background:#fff;display:flex;flex-direction:column}
 #chatHeader{background:#222;color:#fff;padding:12px;text-align:center}
 #messages{flex:1;padding:12px;overflow-y:auto}
 .msg{margin:8px 0;padding:10px 14px;border-radius:18px;max-width:80%;font-size:14px;word-wrap:break-word}
@@ -70,23 +35,15 @@ button{background:#222;color:#fff;border:none}
 </head>
 <body>
 
-<header>
-  <div id="quote">حكمة اليوم: الخصوصية الحقيقية تبدأ بالتحكم</div>
-</header>
-
+<header><div id="quote">حكمة اليوم: الخصوصية تبدأ بالتحكم</div></header>
 <button id="secretBtn"></button>
 
-<div id="passwordOverlay"><div class="box"><div>أدخل كلمة المرور</div><input id="passwordInput" type="password"><button id="passwordBtn">دخول</button></div></div>
-
-<div id="blockOverlay"><div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط<br><br>لا يمكن دخول طرف ثالث</div></div>
-
-<div id="chatOverlay"><div id="chatBox">
-  <div id="chatHeader">Private Chat (2 Users Only)</div>
-  <div id="messages"></div>
-  <div id="inputArea"><input id="msgInput" placeholder="اكتب رسالة..."><button onclick="sendMsg()">إرسال</button></div>
-</div></div>
+<div id="passOverlay" class="overlay"><div class="box"><div>أدخل كلمة المرور</div><input id="passInput" type="password"><button id="passBtn">دخول</button></div></div>
+<div id="blockOverlay" class="overlay"><div class="box">⚠️ الشات مستخدم حالياً بين طرفين فقط</div></div>
+<div id="chatOverlay" class="overlay"><div id="chatBox"><div id="chatHeader">Private Chat</div><div id="messages"></div><div id="inputArea"><input id="msgInput" placeholder="اكتب رسالة..."><button onclick="sendMsg()">إرسال</button></div></div></div>
 
 <script>
+/* Firebase Init */
 const firebaseConfig={
  apiKey:"AIzaSyDBADAFbHjg8Dq10vR1l9yMImoBSFs_70M",
  authDomain:"todayquote-3a22b.firebaseapp.com",
@@ -98,38 +55,44 @@ const firebaseConfig={
 };
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
-firebase.auth().signInAnonymously();
+
+firebase.auth().signInAnonymously().catch(()=>{});
 
 let uid=localStorage.getItem('uid');
 if(!uid){uid=Math.random().toString(36).slice(2);localStorage.setItem('uid',uid)}
 
-const usersRef=db.ref('presence');
+const presenceRef=db.ref('presence');
 const chatRef=db.ref('chat');
 
 const secretBtn=document.getElementById('secretBtn');
-const passwordBtn=document.getElementById('passwordBtn');
-const passOverlay=document.getElementById('passwordOverlay');
+const passOverlay=document.getElementById('passOverlay');
 const chatOverlay=document.getElementById('chatOverlay');
 const blockOverlay=document.getElementById('blockOverlay');
+const passBtn=document.getElementById('passBtn');
 
 secretBtn.onclick=()=>passOverlay.style.display='flex';
 
-passwordBtn.onclick=()=>{
- if(passwordInput.value!=='blobif')return;
- usersRef.once('value',snap=>{
+passBtn.onclick=()=>{
+ if(passInput.value!=='blobif')return;
+ presenceRef.once('value').then(snap=>{
   const users=snap.val()||{};
-  if(Object.keys(users).length>=2 && !users[uid]){
+  const count=Object.keys(users).length;
+
+  if(count>=2 && !users[uid]){
     passOverlay.style.display='none';
     blockOverlay.style.display='flex';
-  }else{
-    usersRef.child(uid).set(true);
-    usersRef.child(uid).onDisconnect().remove();
-    passOverlay.style.display='none';
-    chatOverlay.style.display='flex';
+    return;
   }
+
+  presenceRef.child(uid).set(true);
+  presenceRef.child(uid).onDisconnect().remove();
+
+  passOverlay.style.display='none';
+  chatOverlay.style.display='flex';
  });
 };
 
+/* Send Message */
 function sendMsg(){
  const i=msgInput;
  if(!i.value.trim())return;
@@ -139,6 +102,7 @@ function sendMsg(){
  i.value='';
 }
 
+/* Receive Messages */
 chatRef.on('child_added',s=>{
  const d=s.val(); if(!d)return;
  const m=document.createElement('div');
